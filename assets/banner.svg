@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+  <title id="title">VK Unsubscribe</title>
+  <desc id="desc">Отписка от сообществ через консоль браузера. Без расширений и копирования токенов.</desc>
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0c1426"/><stop offset="1" stop-color="#152d50"/></linearGradient>
+    <linearGradient id="accent" x2="1" y2="1"><stop stop-color="#67b8ff"/><stop offset="1" stop-color="#75ebd1"/></linearGradient>
+  </defs>
+  <rect width="1200" height="360" rx="28" fill="url(#bg)"/>
+  <circle cx="1080" cy="25" r="225" fill="#408bdf" opacity=".08"/>
+  <circle cx="1160" cy="355" r="260" fill="#56e6c4" opacity=".05"/>
+  <rect x="54" y="48" width="220" height="30" rx="15" fill="#233952"/>
+  <g font-family="Segoe UI,Arial,sans-serif">
+    <text x="72" y="68" fill="#b4d4ed" font-size="13" font-weight="600" letter-spacing="2">BROWSER CONSOLE SCRIPT</text>
+    <text x="54" y="154" fill="#f4f8ff" font-size="67" font-weight="700" letter-spacing="-2">VK Unsubscribe</text>
+    <text x="58" y="207" fill="#c4d3e5" font-size="26">Отписка от сообществ ВКонтакте</text>
+    <rect x="58" y="240" width="54" height="4" rx="2" fill="url(#accent)"/>
+    <text x="58" y="290" fill="#9ab6d2" font-size="18">Без расширений · Без копирования токенов</text>
+  </g>
+  <g transform="translate(930 108)" fill="none" stroke="url(#accent)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <rect width="155" height="135" rx="24" stroke="#345372" stroke-width="2"/>
+    <path d="m34 45 26 23-26 23m51 0h34"/>
+  </g>
+</svg>

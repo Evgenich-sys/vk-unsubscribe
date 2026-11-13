@@ -142,7 +142,7 @@
 
       await waitFor(() =>
         group.row.isConnected &&
-        /(^|\s)Подписаться(\s|$)/.test(text(group.row)),
+        /(^|\s)(Подписаться|Подать заявку)(\s|$)/.test(text(group.row)),
         true
       );
 

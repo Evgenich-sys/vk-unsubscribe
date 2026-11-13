@@ -14,6 +14,11 @@
 
   let done = 0;
 
+  class RetryableError extends Error {}
+
+  const isLeft = row => row?.isConnected &&
+    /(^|\s)(Подписаться|Подать заявку)(\s|$)/.test(text(row));
+
   function guard(allowClosed = false) {
     if (state.stop) throw Error("Остановлено пользователем.");
     if (location.pathname !== "/groups/my_all_groups") {
@@ -69,7 +74,7 @@
       await sleep(150);
     }
 
-    throw Error("Не удалось подтвердить отписку. Дальше не продолжаю.");
+    throw new RetryableError("Не удалось подтвердить отписку или дождаться меню.");
   }
 
   function nextGroup() {
@@ -85,6 +90,97 @@
           button, row, path,
           name: (row.innerText || "").split("\n")[0].trim()
         };
+      }
+    }
+  }
+
+  async function leaveGroup(original) {
+    // Retry the same canonical path, not the next unprocessed community.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const dialog = guard(true);
+        const button = [...document.querySelectorAll(
+          '[data-testid="desktop_group_item_button"]'
+        )].find(el => {
+          const row = el.closest("a[href]");
+          return row && new URL(row.href).pathname === original.path;
+        });
+        const row = button?.closest("a[href]");
+
+        if (!row) throw Error("Строка группы исчезла. Проверьте результат вручную.");
+
+        const checkRow = () => {
+          // VK can replace the row and button after a successful unsubscribe.
+          const rows = [...new Set([...document.querySelectorAll(
+            '[data-testid="desktop_group_item_button"]'
+          )].map(el => el.closest("a[href]")).filter(el =>
+            el?.isConnected && new URL(el.href).pathname === original.path
+          ))];
+          if (rows.length > 1) {
+            throw Error("Найдено несколько строк одной группы. Проверьте вручную.");
+          }
+          return rows.length === 1 && isLeft(rows[0]);
+        };
+
+        const assertTarget = () => {
+          if (!row.isConnected || button.closest("a[href]") !== row ||
+              new URL(row.href).pathname !== original.path) {
+            throw Error("Строка группы изменилась. Проверьте результат вручную.");
+          }
+        };
+
+        if (dialog) {
+          checkRow();
+          await waitFor(checkRow, true);
+          return;
+        }
+
+        // The first request may have succeeded during the retry pause.
+        if (checkRow()) return;
+
+        button.scrollIntoView({ block: "center" });
+        button.dispatchEvent(new MouseEvent("mouseout", {
+          bubbles: true,
+          relatedTarget: document.body
+        }));
+        button.dispatchEvent(new MouseEvent("mouseover", {
+          bubbles: true,
+          relatedTarget: document.body
+        }));
+
+        const action = await waitFor(() => {
+          if (checkRow()) return true;
+          const expanded = [...document.querySelectorAll(
+            '[data-testid="desktop_group_item_button"][aria-expanded="true"]'
+          )];
+          if (expanded.length !== 1 || expanded[0] !== button) return;
+
+          const items = [...document.querySelectorAll(
+            '[data-testid="dropdownactionsheet-item"]'
+          )].filter(el => visible(el) && text(el) === "Отписаться");
+          return items.length === 1 ? items[0] : null;
+        });
+
+        guard();
+        if (checkRow()) return;
+        assertTarget();
+        action.click();
+        await waitFor(checkRow, true);
+        return;
+      } catch (error) {
+        // Security checks, unknown errors and manual cancellation are never retried.
+        if (!(error instanceof RetryableError)) throw error;
+        guard(true);
+        if (attempt === 1) {
+          throw Error(`${error.message} Повторная попытка не помогла — остановка.`);
+        }
+
+        console.log(`Повтор через 3 секунды: ${original.name}`);
+        for (let tick = 0; tick < 20; tick++) {
+          guard(true);
+          await sleep(150);
+        }
+        guard(true);
       }
     }
   }
@@ -117,34 +213,7 @@
       }
 
       seen.add(group.path);
-      group.button.scrollIntoView({ block: "center" });
-
-      group.button.dispatchEvent(new MouseEvent("mouseover", {
-        bubbles: true,
-        relatedTarget: document.body
-      }));
-
-      const action = await waitFor(() => {
-        const expanded = [...document.querySelectorAll(
-          '[data-testid="desktop_group_item_button"][aria-expanded="true"]'
-        )];
-
-        if (expanded.length !== 1 || expanded[0] !== group.button) return;
-
-        const items = [...document.querySelectorAll(
-          '[data-testid="dropdownactionsheet-item"]'
-        )].filter(el => visible(el) && text(el) === "Отписаться");
-
-        return items.length === 1 ? items[0] : null;
-      });
-
-      action.click();
-
-      await waitFor(() =>
-        group.row.isConnected &&
-        /(^|\s)(Подписаться|Подать заявку)(\s|$)/.test(text(group.row)),
-        true
-      );
+      await leaveGroup(group);
 
       console.log(`${++done}. Отписка: ${group.name}`);
       await sleep(700);
